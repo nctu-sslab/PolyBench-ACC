@@ -400,3 +400,52 @@ void* polybench_alloc_data(unsigned long long int n, int elt_size)
 
   return ret;
 }
+void* polybench_alloc_2d_data(unsigned long long int n1, unsigned long long int n2,
+        int elt_size){
+  static int flag = 0;
+  if (flag == 0) {
+    puts("polybench_alloc_2d_data");
+    flag++;
+  }
+  size_t val = n1 * n2 * elt_size;
+  // Add array of pointer size
+  val += n1 * sizeof(void*);
+
+  void *ret = xmalloc(val);
+  char *data_begin = (char*)ret + n1 * sizeof(void*);
+  char **ptrs = (char**) ret;
+  //printf("begin: %p\n", (void*)data_begin);
+  //printf("ptrs: %p\n", (void*)ptrs);
+  for (int i = 0; i < n1; i++) {
+    ptrs[i] = data_begin + i * n2 * elt_size;
+    //printf("ptr: %p\n", ptrs[i]);
+  }
+  return ret;
+}
+void* polybench_alloc_3d_data(unsigned long long int n1, unsigned long long int n2,
+        unsigned  long long int n3, int elt_size){
+
+  static int flag = 0;
+  if (flag == 0) {
+    puts("polybench_alloc_3d_data");
+    flag++;
+  }
+  size_t val = n1 * n2 * n3 * elt_size;
+  // Add array of pointer size
+  val += n1 * sizeof(void*);
+  val += n1 * n2 * sizeof(void*);
+
+  void *ret = xmalloc(val);
+  char *data_begin = (char*)ret + n1 * sizeof(void*);
+  char ***ptrs = (char***) ret;
+  for (int i = 0; i < n1; i++) {
+    ptrs[i] = (char**)(data_begin + i * n2 * sizeof(void*));
+  }
+  data_begin += n1 * n2 * sizeof(void*);
+  for (int i = 0; i < n1; i++) {
+    for (int j = 0; j < n2; j++) {
+      ptrs[i][j] = (char*)(data_begin + (i * n2 + j) * n3 * elt_size);
+    }
+  }
+  return ret;
+}
