@@ -11,16 +11,17 @@ TARGET_LANG = OPENCL
 ########################################
 
 # Accelerator Compiler
-ACC = hmpp
+#ACC = clang
 
 # Accelerator Compiler flags
-ACCFLAGS = --codelet-required --openacc-target=$(TARGET_LANG)
+#ACCFLAGS = --codelet-required --openacc-target=$(TARGET_LANG)
+ACCFLAGS =  -fopenmp -I(LLVM_BUILD_INC)
 
 # COMPILER OPTIONS -- HOST
 ########################################
 
 # Compiler
-CC = gcc
+CC = clang
 
 # Compiler flags
-CFLAGS = -O2
+CFLAGS = -O2 -lm
