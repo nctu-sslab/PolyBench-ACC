@@ -100,10 +100,11 @@
 #  define POLYBENCH_ALLOC_2D_ARRAY(n1, n2, type) \
      (type**) polybench_alloc_2d_data (n1 + POLYBENCH_PADDING_FACTOR, n2 + POLYBENCH_PADDING_FACTOR, sizeof(type))
 #  define POLYBENCH_ALLOC_3D_ARRAY(n1, n2, n3, type) \
-     (type**) polybench_alloc_3d_data (n1 + POLYBENCH_PADDING_FACTOR, n2 + POLYBENCH_PADDING_FACTOR, n3 + POLYBENCH_PADDING_FACTOR, sizeof(type))
+     (type***) polybench_alloc_3d_data (n1 + POLYBENCH_PADDING_FACTOR, n2 + POLYBENCH_PADDING_FACTOR, n3 + POLYBENCH_PADDING_FACTOR, sizeof(type))
 #  define POLYBENCH_ALLOC_4D_ARRAY
+/* unused */
 #  define POLYBENCH_ALLOC_5D_ARRAY
-
+/* unused */
 # else
 # define POLYBENCH_ALLOC_1D_ARRAY(n1, type)	\
   (type(*)[n1 + POLYBENCH_PADDING_FACTOR])polybench_alloc_data (n1 + POLYBENCH_PADDING_FACTOR, sizeof(type))

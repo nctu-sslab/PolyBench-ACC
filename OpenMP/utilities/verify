@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+# output answers are compiled with export RUN_MINI=1, export VERIFY=1
+
+dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+proj=`basename $dir`
+exe="${dir}/${proj}_acc"
+cd $dir
+$exe 2> output.txt
+
+if ls ../../ | grep result &> /dev/null; then
+    result_path="../../result"
+else
+    if ls ../../../ | grep result &> /dev/null; then
+        result_path="../../../result"
+    else
+        echo "Cannot find result dir"
+        exit 1
+    fi
+fi
+cd $result_path
+answer_path=`find . -name $proj | head -1`
+
+if ! find $answer_path -name output.txt &> /dev/null; then
+    echo "No output.txt found in $answer_path"
+    exit 1
+fi
+
+diff $dir/output.txt $answer_path/output.txt > $dir/diff.txt
+ret=$?
+
+if [ $ret -eq 0 ]; then
+    echo Success
+else
+    echo Failed
+    exit $ret
+fi
