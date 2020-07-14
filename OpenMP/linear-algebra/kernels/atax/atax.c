@@ -4,13 +4,18 @@
  *
  * Contact:
  * William Killian <killian@udel.edu>
- * 
+ *
  * Copyright 2013, The University of Delaware
  */
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <math.h>
+
+// FIXME
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 /* Include polybench common header. */
 #include <polybench.h>
@@ -55,6 +60,7 @@ void print_array(int nx,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#ifndef OMP_OFFLOAD
 static
 void kernel_atax(int nx, int ny,
 		 DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny),
@@ -70,17 +76,47 @@ void kernel_atax(int nx, int ny,
     for (i = 0; i < _PB_NY; i++)
       y[i] = 0;
     #pragma omp for private (j)
-    for (i = 0; i < _PB_NX; i++)
-      {
-	tmp[i] = 0;
-	for (j = 0; j < _PB_NY; j++)
-	  tmp[i] = tmp[i] + A[i][j] * x[j];
-	for (j = 0; j < _PB_NY; j++)
-	  y[j] = y[j] + A[i][j] * tmp[i];
-      }
+    for (i = 0; i < _PB_NX; i++) {
+	    tmp[i] = 0;
+        for (j = 0; j < _PB_NY; j++)
+          tmp[i] = tmp[i] + A[i][j] * x[j];
+        for (j = 0; j < _PB_NY; j++) {
+            DATA_TYPE temp = A[i][j] * tmp[i];
+            #pragma omp atomic
+            y[j] += temp;
+        }
+    }
   }
   #pragma endscop
 }
+#else
+static
+void kernel_atax(int nx, int ny,
+		 DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny),
+		 DATA_TYPE POLYBENCH_1D(x,NY,ny),
+		 DATA_TYPE POLYBENCH_1D(y,NY,ny),
+		 DATA_TYPE POLYBENCH_1D(tmp,NX,nx))
+{
+  int i, j;
+  {
+    #pragma omp for
+    for (i = 0; i < _PB_NY; i++)
+      y[i] = 0;
+    #pragma omp target data map(to:A[:NX][:NY], x[:NY], tmp[:NX]) map(tofrom: y[:NY])
+    #pragma omp target teams distribute parallel for private (j)
+    for (i = 0; i < _PB_NX; i++) {
+	    tmp[i] = 0;
+        for (j = 0; j < _PB_NY; j++)
+          tmp[i] = tmp[i] + A[i][j] * x[j];
+        for (j = 0; j < _PB_NY; j++) {
+            DATA_TYPE temp = A[i][j] * tmp[i];
+            #pragma omp atomic
+            y[j] += temp;
+        }
+    }
+  }
+}
+#endif
 
 
 int main(int argc, char** argv)

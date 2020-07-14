@@ -4,7 +4,7 @@
  *
  * Contact:
  * William Killian <killian@udel.edu>
- * 
+ *
  * Copyright 2013, The University of Delaware
  */
 #include <stdio.h>
@@ -60,15 +60,12 @@ void kernel_floyd_warshall(int n,
   int i, j, k;
   DATA_TYPE path_new, path_old;
   #pragma scop
-  #pragma omp parallel
   {
-    #pragma omp master
-    {
-      for (k = 0; k < _PB_N; k++)
-      { 
-        #pragma omp for shared (k) private (j)
-        for(i = 0; i < _PB_N; i++)
-          for (j = 0; j < _PB_N; j++)
+      #pragma omp parallel for private(i,j)
+      for (int k = 0; k < _PB_N; k++)
+      {
+        for(int i = 0; i < _PB_N; i++)
+          for (int j = 0; j < _PB_N; j++)
           {
             path_old = path[i][j];
             path_new = path[i][k] + path[k][j];
@@ -76,8 +73,8 @@ void kernel_floyd_warshall(int n,
             path[i][j] = (path[i][j] < path_new)
               ? path[i][j]
               : path_new;
+          }
       }
-    }
   }
   #pragma endscop
 }
