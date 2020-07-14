@@ -7,7 +7,7 @@ HEADERS = $(BENCHMARK).h
 
 SRC += $(UTIL_DIR)/polybench.c
 
-SCRIPT      := run
+SCRIPT      := run verify
 
 ifdef OFFLOAD
 OMPOFFLOADFLAGS := -DOMP_OFFLOAD -fopenmp-targets=nvptx64 -DPOLYBENCH_DYNAMIC_ARRAYS
@@ -26,14 +26,18 @@ $(warning "Run-Large Enabled")
 FLAGS       := -DEXTRALARGE_DATASET
 CFLAGS      := $(CFLAGS) $(FLAGS)
 CXXFLAGS    := $(CXXFLAGS) $(FLAGS)
+else ifdef RUN_BIG
+$(warning "Run-BIG Enabled")
+FLAGS       := -DLARGE_DATASET
+CFLAGS      := $(CFLAGS) $(FLAGS)
+CXXFLAGS    := $(CXXFLAGS) $(FLAGS)
 endif
 
-ifdef VERIFY
-$(warning "Verify Enabled")
+ifdef RUN_DUMP
+$(warning "Arrary Dump Enabled")
 FLAGS       := -DPOLYBENCH_DUMP_ARRAYS
 CFLAGS      := $(CFLAGS) $(FLAGS)
 CXXFLAGS    := $(CXXFLAGS) $(FLAGS)
-SCRIPT      += verify
 endif
 
 DEPS        := Makefile.dep

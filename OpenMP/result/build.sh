@@ -7,7 +7,7 @@ root=`pwd`
 makefiles=`find . -name Makefile`
 
 export RUN_MINI=1
-export VERIFY=1
+export RUN_DUMP=1
 
 for m in $makefiles
 do
