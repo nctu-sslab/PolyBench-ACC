@@ -4,7 +4,7 @@
  *
  * Contact:
  * William Killian <killian@udel.edu>
- * 
+ *
  * Copyright 2013, The University of Delaware
  */
 #include <stdio.h>
@@ -73,21 +73,22 @@ void kernel_bicg(int nx, int ny,
 {
   int i, j;
   #pragma scop
-  #pragma omp parallel
   {
-    #pragma omp for
-    for (i = 0; i < _PB_NY; i++)
-      s[i] = 0;
-    #pragma omp for private (j)
-    for (i = 0; i < _PB_NX; i++)
-      {
-        q[i] = 0;
-	for (j = 0; j < _PB_NY; j++)
-	  {
-            s[j] = s[j] + r[i] * A[i][j];
+    #pragma omp parallel for private(i)
+    for (j = 0; j < _PB_NY; j++) {
+      s[j] = 0;
+      for (i = 0; i < _PB_NX; i++) {
+        //s[j] = s[j] + r[i] * A[i][j];
+      }
+    }
+    #pragma omp parallel for private (j)
+    for (i = 0; i < _PB_NX; i++) {
+      q[i] = 0;
+      for (j = 0; j < _PB_NY; j++) {
+        s[j] = s[j] + r[i] * A[i][j];
 	    q[i] = q[i] + A[i][j] * p[j];
 	  }
-      }
+    }
   }
   #pragma endscop
 }
