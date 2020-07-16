@@ -4,7 +4,7 @@
  *
  * Contact:
  * William Killian <killian@udel.edu>
- * 
+ *
  * Copyright 2013, The University of Delaware
  */
 #include <stdio.h>
@@ -29,7 +29,7 @@ void init_array (int ni, int nj, int nk,
 
   for (i = 0; i < ni; i++)
     for (j = 0; j < nj; j++)
-      for (k = 0; j < nk; k++)
+      for (k = 0; k < nk; k++)
 	{
 	  A[i][j][k] = i % 12 + 2 * (j % 7) + 3 * (k % 13);
 	}
@@ -47,7 +47,7 @@ void print_array(int ni, int nj, int nk,
 
   for (i = 0; i < ni; i++)
     for (j = 0; j < nj; j++)
-      for (k = 0; j < nk; k++) {
+      for (k = 0; k < nk; k++) {
 	fprintf(stderr, DATA_PRINTF_MODIFIER, B[i][j][k]);
 	if (((i * NJ + j) * NK + k) % 20 == 0) fprintf(stderr, "\n");
       }
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 
   /* Initialize array(s). */
   init_array (ni, nj, nk, POLYBENCH_ARRAY(A));
-  
+
   /* Start timer. */
   polybench_start_instruments;
 
@@ -112,7 +112,7 @@ int main(int argc, char** argv)
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
-  
+
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(ni, nj, nk, POLYBENCH_ARRAY(B)));
@@ -120,6 +120,6 @@ int main(int argc, char** argv)
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(A);
   POLYBENCH_FREE_ARRAY(B);
-  
+
   return 0;
 }
