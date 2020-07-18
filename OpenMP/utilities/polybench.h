@@ -40,6 +40,9 @@
 #  define POLYBENCH_C99_SELECT(x,y) x
 # endif
 
+#define IDX2(A, d1, d2, N1, N2) A[d1 * N2 + d2]
+#define IDX3(A, d1, d2, d3, N1, N2, N3) A[(d1 * N2 + d2) * N3 + d3]
+
 
 /* Scalar loop bounds in SCoPs. By default, use parametric loop bounds. */
 # ifdef POLYBENCH_USE_SCALAR_LB
@@ -74,6 +77,13 @@
 #endif
 /* Macros for using arrays in the function prototypes. */
 /* Use dynamic array */
+
+#ifdef POLYBENCH_OFFLOAD1D
+#  define POLYBENCH_2D_1D(var, dim1, dim2, ddim1, ddim2) *var
+#  define POLYBENCH_3D_1D(var, dim1, dim2, dim3, ddim1, ddim2, ddim3) *var
+#  define POLYBENCH_4D_1D(var, dim1, dim2, dim3, dim4, ddim1, ddim2, ddim3, ddim4) *var
+#endif
+
 # ifdef POLYBENCH_DYNAMIC_ARRAYS
 #  define POLYBENCH_1D(var, dim1, ddim1) *var
 #  define POLYBENCH_2D(var, dim1, dim2, ddim1, ddim2) **var

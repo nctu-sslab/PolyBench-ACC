@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
+#include <errno.h>
 #include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -384,7 +385,11 @@ xmalloc (size_t num)
   int ret = posix_memalign (&new, 32, num);
   if (! new || ret)
     {
-      fprintf (stderr, "[PolyBench] posix_memalign: cannot allocate memory");
+      if (ret & ENOMEM) {
+          fprintf (stderr, "[PolyBench] posix_memalign: out of memory\n");
+      } else {
+          fprintf (stderr, "[PolyBench] posix_memalign: cannot allocate memory\n");
+      }
       exit (1);
     }
   return new;

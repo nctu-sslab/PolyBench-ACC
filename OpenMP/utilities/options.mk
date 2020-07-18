@@ -15,13 +15,19 @@ TARGET_LANG = OPENCL
 
 # Accelerator Compiler flags
 #ACCFLAGS = --codelet-required --openacc-target=$(TARGET_LANG)
-ACCFLAGS =  -fopenmp -I$(LLVM_BUILD_INC)
+ifdef RUN_NOOMP
+$(warning NO OMP Enbaled)
+else
+ACCFLAGS := -fopenmp
+endif
+ACCFLAGS += -I$(LLVM_BUILD_INC)
 
 # COMPILER OPTIONS -- HOST
 ########################################
 
 # Compiler
 CC = clang
+#CC = gcc-8
 
 # Compiler flags
 CFLAGS = -O2 -lm

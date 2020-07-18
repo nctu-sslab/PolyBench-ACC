@@ -9,11 +9,26 @@ SRC += $(UTIL_DIR)/polybench.c
 
 SCRIPT      := run verify
 
+ifdef POLY1D
+$(warning "Poly-1D Enabled")
+OFFLOAD=1
+endif
+
 ifdef OFFLOAD
-OMPOFFLOADFLAGS := -DOMP_OFFLOAD -fopenmp-targets=nvptx64 -DPOLYBENCH_DYNAMIC_ARRAYS
+OMPOFFLOADFLAGS := -DOMP_OFFLOAD -fopenmp-targets=nvptx64
+ifdef POLY1D
+OMPOFFLOADFLAGS += -DPOLYBENCH_OFFLOAD1D -Wno-incompatible-pointer-types
+else
+OMPOFFLOADFLAGS += -DPOLYBENCH_DYNAMIC_ARRAYS
+endif
 CFLAGS      += $(OMPOFFLOADFLAGS)
 CXXFLAGS    += $(OMPOFFLOADFLAGS)
 LDLIBS      += $(OMPOFFLOADFLAGS)
+endif
+
+ifdef VERIFY
+RUN_MINI=1
+RUN_DUMP=1
 endif
 
 ifdef RUN_MINI
@@ -21,21 +36,28 @@ $(warning "Run-Mini Enabled")
 FLAGS       := -DMINI_DATASET
 CFLAGS      := $(CFLAGS) $(FLAGS)
 CXXFLAGS    := $(CXXFLAGS) $(FLAGS)
-else ifdef RUN_LARGE
-$(warning "Run-Large Enabled")
+else ifdef RUN_EXTRALARGE
+$(warning "Run-Extra-Large Enabled")
 FLAGS       := -DEXTRALARGE_DATASET
 CFLAGS      := $(CFLAGS) $(FLAGS)
 CXXFLAGS    := $(CXXFLAGS) $(FLAGS)
-else ifdef RUN_BIG
-$(warning "Run-BIG Enabled")
+else ifdef RUN_LARGE
+$(warning "Run-Large Enabled")
 FLAGS       := -DLARGE_DATASET
 CFLAGS      := $(CFLAGS) $(FLAGS)
 CXXFLAGS    := $(CXXFLAGS) $(FLAGS)
 endif
 
 ifdef RUN_DUMP
-$(warning "Arrary Dump Enabled")
+$(warning "Array Dump Enabled")
 FLAGS       := -DPOLYBENCH_DUMP_ARRAYS
+CFLAGS      := $(CFLAGS) $(FLAGS)
+CXXFLAGS    := $(CXXFLAGS) $(FLAGS)
+endif
+
+ifdef RUN_DYN
+$(warning "Dynamic Array Enabled")
+FLAGS       := -DPOLYBENCH_DYNAMIC_ARRAYS
 CFLAGS      := $(CFLAGS) $(FLAGS)
 CXXFLAGS    := $(CXXFLAGS) $(FLAGS)
 endif
@@ -45,7 +67,7 @@ DEP_FLAG    := -MM
 
 .PHONY: all exe clean veryclean
 
-all : exe $(SCRIPT)
+all : $(SCRIPT) exe
 
 exe : $(EXE)
 
