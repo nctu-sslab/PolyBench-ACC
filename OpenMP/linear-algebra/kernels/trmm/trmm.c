@@ -4,7 +4,7 @@
  *
  * Contact:
  * William Killian <killian@udel.edu>
- * 
+ *
  * Copyright 2013, The University of Delaware
  */
 #include <stdio.h>
@@ -57,6 +57,7 @@ void print_array(int ni,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#ifndef OMP_OFFLOAD
 static
 void kernel_trmm(int ni,
 		 DATA_TYPE alpha,
@@ -76,6 +77,27 @@ void kernel_trmm(int ni,
   }
   #pragma endscop
 }
+#else
+static
+void kernel_trmm(int ni,
+		 DATA_TYPE alpha,
+		 DATA_TYPE POLYBENCH_2D(A,NI,NI,ni,ni),
+		 DATA_TYPE POLYBENCH_2D(B,NI,NI,ni,ni))
+{
+  int i, j, k;
+  #pragma scop
+#pragma omp target data map(to: A[:ni][:ni]) map(tofrom: B[:ni][:ni])
+  {
+    /*  B := alpha*A'*B, A triangular */
+    #pragma omp target teams distribute parallel for
+    for (i = 1; i < _PB_NI; i++)
+      for (j = 0; j < _PB_NI; j++)
+	for (k = 0; k < i; k++)
+	  B[i][j] += alpha * A[i][k] * B[j][k];
+  }
+  #pragma endscop
+}
+#endif
 
 
 int main(int argc, char** argv)

@@ -108,6 +108,58 @@ void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
 	}
   }
 }
+#elif defined POLYBENCH_OFFLOAD1D
+static
+void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
+		DATA_TYPE POLYBENCH_2D_1D(E,NI,NJ,ni,nj),
+		DATA_TYPE POLYBENCH_2D_1D(A,NI,NK,ni,nk),
+		DATA_TYPE POLYBENCH_2D_1D(B,NK,NJ,nk,nj),
+		DATA_TYPE POLYBENCH_2D_1D(F,NJ,NL,nj,nl),
+		DATA_TYPE POLYBENCH_2D_1D(C,NJ,NM,nj,nm),
+		DATA_TYPE POLYBENCH_2D_1D(D,NM,NL,nm,nl),
+		DATA_TYPE POLYBENCH_2D_1D(G,NI,NL,ni,nl))
+{
+  int i, j, k;
+#define GET_IDX2(Name, i, j) Name##_IDX(i,j)
+#define E_IDX(i,j) IDX2(E, i,j,ni,nj)
+#define A_IDX(i,j) IDX2(A, i,j,ni,nk)
+#define B_IDX(i,j) IDX2(B, i,j,nk,nj)
+#define F_IDX(i,j) IDX2(F, i,j,nj,nl)
+#define C_IDX(i,j) IDX2(C, i,j,nj,nm)
+#define D_IDX(i,j) IDX2(D, i,j,nm,nl)
+#define G_IDX(i,j) IDX2(G, i,j,ni,nl)
+#pragma omp target data map(to: A[:NI*NK], B[:NK*NJ], C[:NJ*NM], \
+        D[:NM*NL], E[:NI*NJ], F[:NJ*NL]) map(tofrom: G[:NI*NL])
+  {
+    /* E := A*B */
+    #pragma omp target teams distribute parallel for private (j, k)
+    for (i = 0; i < _PB_NI; i++)
+      for (j = 0; j < _PB_NJ; j++)
+	{
+          GET_IDX2(E,i,j) = 0;
+	  for (k = 0; k < _PB_NK; ++k)
+	    GET_IDX2(E,i,j) += GET_IDX2(A,i,k) * GET_IDX2(B,k,j);
+        }
+    /* F := C*D */
+    #pragma omp target teams distribute parallel for private (j, k)
+    for (i = 0; i < _PB_NJ; i++)
+      for (j = 0; j < _PB_NL; j++)
+	{
+	  GET_IDX2(F,i,j) = 0;
+	  for (k = 0; k < _PB_NM; ++k)
+	    GET_IDX2(F,i,j) += GET_IDX2(C,i,k) * GET_IDX2(D,k,j);
+        }
+    /* G := E*F */
+    #pragma omp target teams distribute parallel for private (j, k)
+    for (i = 0; i < _PB_NI; i++)
+      for (j = 0; j < _PB_NL; j++)
+	{
+	  GET_IDX2(G,i,j) = 0;
+	  for (k = 0; k < _PB_NJ; ++k)
+	    GET_IDX2(G,i,j) += GET_IDX2(E,i,k) * GET_IDX2(F,k,j);
+	}
+  }
+}
 #else
 static
 void kernel_3mm(int ni, int nj, int nk, int nl, int nm,

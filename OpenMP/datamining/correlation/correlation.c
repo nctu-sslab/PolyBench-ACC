@@ -126,6 +126,73 @@ void kernel_correlation(int m, int n,
   #pragma endscop
   symmat[_PB_M-1][_PB_M-1] = 1.0;
 }
+#elif POLYBENCH_OFFLOAD1D
+static
+void kernel_correlation(int m, int n,
+			DATA_TYPE float_n,
+			DATA_TYPE POLYBENCH_2D_1D(data,M,N,m,n),
+			DATA_TYPE POLYBENCH_2D_1D(symmat,M,M,m,m),
+			DATA_TYPE POLYBENCH_1D(mean,M,m),
+			DATA_TYPE POLYBENCH_1D(stddev,M,m))
+{
+  int i, j, j1, j2;
+#define data_IDX(i,j) IDX2(data,i,j,m,n)
+#define symmat_IDX(i,j) IDX2(symmat,i,j,m,m)
+
+  DATA_TYPE eps = 0.1f;
+
+#define sqrt_of_array_cell(x,j) sqrt(x[j])
+  /* Determine mean of column vectors of input data matrix */
+  #pragma omp target data map(to: data[:M*N], mean[:M], stddev[:M]) map(tofrom: symmat[:M*M])
+  {
+    #pragma omp target teams distribute parallel for private (i)
+    for (j = 0; j < _PB_M; j++)
+      {
+        mean[j] = 0.0;
+	for (i = 0; i < _PB_N; i++)
+	  mean[j] += GET_IDX2(data,i,j);
+	mean[j] /= float_n;
+      }
+    /* Determine standard deviations of column vectors of data matrix. */
+    #pragma omp target teams distribute parallel for private (i)
+    for (j = 0; j < _PB_M; j++)
+      {
+        stddev[j] = 0.0;
+	for (i = 0; i < _PB_N; i++)
+	  stddev[j] += (GET_IDX2(data,i,j) - mean[j]) * (GET_IDX2(data,i,j) - mean[j]);
+	stddev[j] /= float_n;
+	stddev[j] = sqrt_of_array_cell(stddev, j);
+	/* The following in an inelegant but usual way to handle
+	   near-zero std. dev. values, which below would cause a zero-
+	   divide. */
+	stddev[j] = stddev[j] <= eps ? 1.0 : stddev[j];
+      }
+
+    /* Center and reduce the column vectors. */
+    #pragma omp target teams distribute parallel for private (j)
+    for (i = 0; i < _PB_N; i++)
+      for (j = 0; j < _PB_M; j++)
+	{
+          GET_IDX2(data,i,j) -= mean[j];
+          GET_IDX2(data,i,j) /= sqrt(float_n) * stddev[j];
+	}
+
+    /* Calculate the m * m correlation matrix. */
+    #pragma omp target teams distribute parallel for private (j2, i)
+    for (j1 = 0; j1 < _PB_M-1; j1++)
+      {
+        GET_IDX2(symmat,j1,j1) = 1.0;
+	for (j2 = j1+1; j2 < _PB_M; j2++)
+	  {
+            GET_IDX2(symmat,j1,j2) = 0.0;
+	    for (i = 0; i < _PB_N; i++)
+	      GET_IDX2(symmat,j1,j2) += (GET_IDX2(data,i,j1) * GET_IDX2(data,i,j2));
+	    GET_IDX2(symmat,j2,j1) = GET_IDX2(symmat,j1,j2);
+          }
+      }
+  }
+  GET_IDX2(symmat,_PB_M-1,_PB_M-1) = 1.0;
+}
 #else
 static
 void kernel_correlation(int m, int n,

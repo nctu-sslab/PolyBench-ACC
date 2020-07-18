@@ -169,6 +169,82 @@ void kernel_fdtd_apml(int cz,
   }
   #pragma endscop
 }
+#elif defined POLYBENCH_OFFLOAD1D
+static
+void kernel_fdtd_apml(int cz,
+		      int cxm,
+		      int cym,
+		      DATA_TYPE mui,
+		      DATA_TYPE ch,
+		      DATA_TYPE POLYBENCH_2D_1D(Ax,CZ+1,CYM+1,cz+1,cym+1),
+		      DATA_TYPE POLYBENCH_2D_1D(Ry,CZ+1,CYM+1,cz+1,cym+1),
+		      DATA_TYPE POLYBENCH_2D_1D(clf,CYM+1,CXM+1,cym+1,cxm+1),
+		      DATA_TYPE POLYBENCH_2D_1D(tmp,CYM+1,CXM+1,cym+1,cxm+1),
+		      DATA_TYPE POLYBENCH_3D_1D(Bza,CZ+1,CYM+1,CXM+1,cz+1,cym+1,cxm+1),
+		      DATA_TYPE POLYBENCH_3D_1D(Ex,CZ+1,CYM+1,CXM+1,cz+1,cym+1,cxm+1),
+		      DATA_TYPE POLYBENCH_3D_1D(Ey,CZ+1,CYM+1,CXM+1,cz+1,cym+1,cxm+1),
+		      DATA_TYPE POLYBENCH_3D_1D(Hz,CZ+1,CYM+1,CXM+1,cz+1,cym+1,cxm+1),
+		      DATA_TYPE POLYBENCH_1D(czm,CZ+1,cz+1),
+		      DATA_TYPE POLYBENCH_1D(czp,CZ+1,cz+1),
+		      DATA_TYPE POLYBENCH_1D(cxmh,CXM+1,cxm+1),
+		      DATA_TYPE POLYBENCH_1D(cxph,CXM+1,cxm+1),
+		      DATA_TYPE POLYBENCH_1D(cymh,CYM+1,cym+1),
+		      DATA_TYPE POLYBENCH_1D(cyph,CYM+1,cym+1))
+{
+  int iz, iy, ix;
+#define Ax_IDX(i,j) IDX2(Ax,i,j,cz+1,cym+1)
+#define Ry_IDX(i,j) IDX2(Ry,i,j,cz+1,cym+1)
+#define clf_IDX(i,j) IDX2(clf,i,j,cym+1,cxm+1)
+#define tmp_IDX(i,j) IDX2(tmp,i,j,cym+1,cxm+1)
+#define Bza_IDX(i,j,k) IDX3(Bza,i,j,k,cz+1,cym+1,cxm+1)
+#define Ex_IDX(i,j,k) IDX3(Ex,i,j,k,cz+1,cym+1,cxm+1)
+#define Ey_IDX(i,j,k) IDX3(Ey,i,j,k,cz+1,cym+1,cxm+1)
+#define Hz_IDX(i,j,k) IDX3(Hz,i,j,k,cz+1,cym+1,cxm+1)
+
+    #pragma omp target data map(to: Ax[:(CZ+1)*(CYM+1)], Ry[:(CZ+1)*(CYM+1)], \
+            clf[:(CYM+1)*(CXM+1)], tmp[:(CYM+1)*(CXM+1)], czm[:CZ+1], czp[:CZ+1], \
+            cxmh[:CXM+1], cxph[:CXM+1], cymh[:CYM+1], cyph[:CYM+1]) \
+            map(tofrom: Bza[:(CZ+1)*(CYM+1)*(CXM+1)], Ex[:(CZ+1)*(CYM+1)*(CXM+1)], Ey[:(CZ+1)*(CYM+1)*(CXM+1)], Hz[:(CZ+1)*(CYM+1)*(CXM+1)])
+    {
+      #pragma omp target teams distribute parallel for private(iy, ix)
+      for (iz = 0; iz < _PB_CZ; iz++)
+        {
+	  for (iy = 0; iy < _PB_CYM; iy++)
+	    {
+	      for (ix = 0; ix < _PB_CXM; ix++)
+		{
+		  GET_IDX2(clf,iz,iy) = GET_IDX3(Ex,iz,iy,ix) - GET_IDX3(Ex,iz,iy+1,ix) + GET_IDX3(Ey,iz,iy,ix+1) - GET_IDX3(Ey,iz,iy,ix);
+		  GET_IDX2(tmp,iz,iy) = (cymh[iy] / cyph[iy]) * GET_IDX3(Bza,iz,iy,ix) - (ch / cyph[iy]) * GET_IDX2(clf,iz,iy);
+		  GET_IDX3(Hz,iz,iy,ix) = (cxmh[ix] /cxph[ix]) * GET_IDX3(Hz,iz,iy,ix)
+		    + (mui * czp[iz] / cxph[ix]) * GET_IDX2(tmp,iz,iy)
+		    - (mui * czm[iz] / cxph[ix]) * GET_IDX3(Bza,iz,iy,ix);
+		  GET_IDX3(Bza,iz,iy,ix) = GET_IDX2(tmp,iz,iy);
+		}
+	      GET_IDX2(clf,iz,iy) = GET_IDX3(Ex,iz,iy,_PB_CXM) - GET_IDX3(Ex,iz,iy+1,_PB_CXM) + GET_IDX2(Ry,iz,iy) - GET_IDX3(Ey,iz,iy,_PB_CXM);
+	      GET_IDX2(tmp,iz,iy) = (cymh[iy] / cyph[iy]) * GET_IDX3(Bza,iz,iy,_PB_CXM) - (ch / cyph[iy]) * GET_IDX2(clf,iz,iy);
+	      GET_IDX3(Hz,iz,iy,_PB_CXM)=(cxmh[_PB_CXM] / cxph[_PB_CXM]) * GET_IDX3(Hz,iz,iy,_PB_CXM)
+		+ (mui * czp[iz] / cxph[_PB_CXM]) * GET_IDX2(tmp,iz,iy)
+		- (mui * czm[iz] / cxph[_PB_CXM]) * GET_IDX3(Bza,iz,iy,_PB_CXM);
+	      GET_IDX3(Bza,iz,iy,_PB_CXM) = GET_IDX2(tmp,iz,iy);
+	      for (ix = 0; ix < _PB_CXM; ix++)
+		{
+		  GET_IDX2(clf,iz,iy) = GET_IDX3(Ex,iz,_PB_CYM,ix) - GET_IDX2(Ax,iz,ix) + GET_IDX3(Ey,iz,_PB_CYM,ix+1) - GET_IDX3(Ey,iz,_PB_CYM,ix);
+		  GET_IDX2(tmp,iz,iy) = (cymh[_PB_CYM] / cyph[iy]) * GET_IDX3(Bza,iz,iy,ix) - (ch / cyph[iy]) * GET_IDX2(clf,iz,iy);
+		  GET_IDX3(Hz,iz,_PB_CYM,ix) = (cxmh[ix] / cxph[ix]) * GET_IDX3(Hz,iz,_PB_CYM,ix)
+		    + (mui * czp[iz] / cxph[ix]) * GET_IDX2(tmp,iz,iy)
+		    - (mui * czm[iz] / cxph[ix]) * GET_IDX3(Bza,iz,_PB_CYM,ix);
+		  GET_IDX3(Bza,iz,_PB_CYM,ix) = GET_IDX2(tmp,iz,iy);
+		}
+	      GET_IDX2(clf,iz,iy) = GET_IDX3(Ex,iz,_PB_CYM,_PB_CXM) - GET_IDX2(Ax,iz,_PB_CXM) + GET_IDX2(Ry,iz,_PB_CYM) - GET_IDX3(Ey,iz,_PB_CYM,_PB_CXM);
+	      GET_IDX2(tmp,iz,iy) = (cymh[_PB_CYM] / cyph[_PB_CYM]) * GET_IDX3(Bza,iz,_PB_CYM,_PB_CXM) - (ch / cyph[_PB_CYM]) * GET_IDX2(clf,iz,iy);
+	      GET_IDX3(Hz,iz,_PB_CYM,_PB_CXM) = (cxmh[_PB_CXM] / cxph[_PB_CXM]) * GET_IDX3(Hz,iz,_PB_CYM,_PB_CXM)
+		+ (mui * czp[iz] / cxph[_PB_CXM]) * GET_IDX2(tmp,iz,iy)
+		- (mui * czm[iz] / cxph[_PB_CXM]) * GET_IDX3(Bza,iz,_PB_CYM,_PB_CXM);
+	      GET_IDX3(Bza,iz,_PB_CYM,_PB_CXM) = GET_IDX2(tmp,iz,iy);
+	    }
+	}
+  }
+}
 #else
 static
 void kernel_fdtd_apml(int cz,

@@ -103,6 +103,42 @@ void kernel_2mm(int ni, int nj, int nk, int nl,
   }
   #pragma endscop
 }
+#elif defined POLYBENCH_OFFLOAD1D
+static void kernel_2mm(int ni, int nj, int nk, int nl,
+		DATA_TYPE alpha,
+		DATA_TYPE beta,
+		DATA_TYPE POLYBENCH_2D_1D(tmp,NI,NJ,ni,nj),
+		DATA_TYPE POLYBENCH_2D_1D(A,NI,NK,ni,nk),
+		DATA_TYPE POLYBENCH_2D_1D(B,NK,NJ,nk,nj),
+		DATA_TYPE POLYBENCH_2D_1D(C,NL,NJ,nl,nj),
+		DATA_TYPE POLYBENCH_2D_1D(D,NI,NL,ni,nl))
+{
+  int i, j, k;
+  #pragma omp target data map(to:tmp[:NI*NJ], A[:NI*NK], B[:NK*NJ], C[:NL*NJ]) \
+    map(tofrom: D[:NI*NL])
+  {
+#define tmp_IDX(i, j) IDX2(tmp, i, j, ni, nj)
+#define A_IDX(i, j) IDX2(A, i, j, ni, nk)
+#define B_IDX(i, j) IDX2(B, i, j, nk, nj)
+#define C_IDX(i, j) IDX2(C, i, j, nl, nj)
+#define D_IDX(i, j) IDX2(D, i, j, ni, nl)
+    #pragma omp target teams distribute parallel for private (j, k)
+    for (i = 0; i < _PB_NI; i++)
+      for (j = 0; j < _PB_NJ; j++) {
+        tmp_IDX(i,j) = 0;
+          for (k = 0; k < _PB_NK; ++k)
+            tmp_IDX(i,j) += alpha * A_IDX(i,k) * B_IDX(k,j);
+      }
+
+    #pragma omp target teams distribute parallel for private (j, k)
+    for (i = 0; i < _PB_NI; i++)
+      for (j = 0; j < _PB_NL; j++) {
+	    D_IDX(i,j) *= beta;
+	    for (k = 0; k < _PB_NJ; ++k)
+	      D_IDX(i,j) += tmp_IDX(i,k) * C_IDX(k,j);
+	}
+  }
+}
 #else
 static void kernel_2mm(int ni, int nj, int nk, int nl,
 		DATA_TYPE alpha,
@@ -114,8 +150,8 @@ static void kernel_2mm(int ni, int nj, int nk, int nl,
 		DATA_TYPE POLYBENCH_2D(D,NI,NL,ni,nl))
 {
   int i, j, k;
-  #pragma omp target data map(to:tmp[:NI][:NJ], A[:NI][:NK], B[:NK][:NJ], C[:NL][:NJ]) \
-    map(tofrom: D[:NI][:NL])
+  #pragma omp target data map(to:tmp[:NI][:NJ], A[:NI][:NK], B[:NK][:NJ], \
+          C[:NL][:NJ]) map(tofrom: D[:NI][:NL])
   {
     #pragma omp target teams distribute parallel for private (j, k)
     for (i = 0; i < _PB_NI; i++)
@@ -124,7 +160,6 @@ static void kernel_2mm(int ni, int nj, int nk, int nl,
           for (k = 0; k < _PB_NK; ++k)
             tmp[i][j] += alpha * A[i][k] * B[k][j];
       }
-
     #pragma omp target teams distribute parallel for private (j, k)
     for (i = 0; i < _PB_NI; i++)
       for (j = 0; j < _PB_NL; j++) {

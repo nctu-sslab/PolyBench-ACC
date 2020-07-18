@@ -19,6 +19,9 @@
 /* Default data type is double, default size is 4000. */
 #include "bicg.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 /* Array initialization. */
 static
@@ -63,6 +66,7 @@ void print_array(int nx, int ny,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#ifndef OMP_OFFLOAD
 static
 void kernel_bicg(int nx, int ny,
 		 DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny),
@@ -78,20 +82,83 @@ void kernel_bicg(int nx, int ny,
     for (j = 0; j < _PB_NY; j++) {
       s[j] = 0;
       for (i = 0; i < _PB_NX; i++) {
-        //s[j] = s[j] + r[i] * A[i][j];
+        s[j] = s[j] + r[i] * A[i][j];
       }
     }
     #pragma omp parallel for private (j)
     for (i = 0; i < _PB_NX; i++) {
       q[i] = 0;
       for (j = 0; j < _PB_NY; j++) {
-        s[j] = s[j] + r[i] * A[i][j];
-	    q[i] = q[i] + A[i][j] * p[j];
-	  }
+        q[i] = q[i] + A[i][j] * p[j];
+      }
     }
   }
   #pragma endscop
 }
+#elif defined POLYBENCH_OFFLOAD1D
+static
+void kernel_bicg(int nx, int ny,
+		 DATA_TYPE POLYBENCH_2D_1D(A,NX,NY,nx,ny),
+		 DATA_TYPE POLYBENCH_1D(s,NY,ny),
+		 DATA_TYPE POLYBENCH_1D(q,NX,nx),
+		 DATA_TYPE POLYBENCH_1D(p,NY,ny),
+		 DATA_TYPE POLYBENCH_1D(r,NX,nx))
+{
+#define A_IDX(i,j) IDX2(A,i,j,nx,ny)
+  int i, j;
+  #pragma scop
+  #pragma omp target data map(to: A[:nx*ny], p[:ny], r[:nx]) \
+    map(tofrom: s[:ny], q[:nx])
+  {
+    #pragma omp target teams distribute parallel for private(i)
+    for (j = 0; j < _PB_NY; j++) {
+      s[j] = 0;
+      for (i = 0; i < _PB_NX; i++) {
+        s[j] = s[j] + r[i] * GET_IDX2(A,i,j);
+      }
+    }
+    #pragma omp target teams distribute parallel for private(j)
+    for (i = 0; i < _PB_NX; i++) {
+      q[i] = 0;
+      for (j = 0; j < _PB_NY; j++) {
+        q[i] = q[i] + GET_IDX2(A,i,j) * p[j];
+      }
+    }
+  }
+  #pragma endscop
+}
+#else
+static
+void kernel_bicg(int nx, int ny,
+		 DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny),
+		 DATA_TYPE POLYBENCH_1D(s,NY,ny),
+		 DATA_TYPE POLYBENCH_1D(q,NX,nx),
+		 DATA_TYPE POLYBENCH_1D(p,NY,ny),
+		 DATA_TYPE POLYBENCH_1D(r,NX,nx))
+{
+  int i, j;
+  #pragma scop
+  #pragma omp target data map(to: A[:nx][:ny], p[:ny], r[:nx]) \
+    map(tofrom: s[:ny], q[:nx])
+  {
+    #pragma omp target teams distribute parallel for private(i)
+    for (j = 0; j < _PB_NY; j++) {
+      s[j] = 0;
+      for (i = 0; i < _PB_NX; i++) {
+        s[j] = s[j] + r[i] * A[i][j];
+      }
+    }
+    #pragma omp target teams distribute parallel for private(j)
+    for (i = 0; i < _PB_NX; i++) {
+      q[i] = 0;
+      for (j = 0; j < _PB_NY; j++) {
+        q[i] = q[i] + A[i][j] * p[j];
+      }
+    }
+  }
+  #pragma endscop
+}
+#endif
 
 
 int main(int argc, char** argv)

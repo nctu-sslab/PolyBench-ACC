@@ -4,7 +4,7 @@
  *
  * Contact:
  * William Killian <killian@udel.edu>
- * 
+ *
  * Copyright 2013, The University of Delaware
  */
 #include <stdio.h>
@@ -64,6 +64,7 @@ void print_array(int ni, int nj,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#ifndef OMP_OFFLOAD
 static
 void kernel_gemm(int ni, int nj, int nk,
 		 DATA_TYPE alpha,
@@ -88,6 +89,62 @@ void kernel_gemm(int ni, int nj, int nk,
   }
   #pragma endscop
 }
+#elif defined POLYBENCH_OFFLOAD1D
+static
+void kernel_gemm(int ni, int nj, int nk,
+		 DATA_TYPE alpha,
+		 DATA_TYPE beta,
+		 DATA_TYPE POLYBENCH_2D_1D(C,NI,NJ,ni,nj),
+		 DATA_TYPE POLYBENCH_2D_1D(A,NI,NK,ni,nk),
+		 DATA_TYPE POLYBENCH_2D_1D(B,NK,NJ,nk,nj))
+{
+  int i, j, k;
+#define C_IDX(i,j) IDX2(C,i,j,ni,nj)
+#define A_IDX(i,j) IDX2(A,i,j,ni,nk)
+#define B_IDX(i,j) IDX2(B,i,j,nk,nj)
+  #pragma scop
+  {
+    /* C := alpha*A*B + beta*C */
+    #pragma omp target data map(to: A[:ni*nk], B[:nk*nj]) \
+      map(tofrom: C[:ni*nj])
+    #pragma omp target teams distribute parallel for private (k) collapse(2)
+    for (i = 0; i < _PB_NI; i++)
+      for (j = 0; j < _PB_NJ; j++)
+	{
+	  GET_IDX2(C,i,j) *= beta;
+	  for (k = 0; k < _PB_NK; ++k)
+	    GET_IDX2(C,i,j) += alpha * GET_IDX2(A,i,k) * GET_IDX2(B,k,j);
+	}
+  }
+  #pragma endscop
+}
+#else
+static
+void kernel_gemm(int ni, int nj, int nk,
+		 DATA_TYPE alpha,
+		 DATA_TYPE beta,
+		 DATA_TYPE POLYBENCH_2D(C,NI,NJ,ni,nj),
+		 DATA_TYPE POLYBENCH_2D(A,NI,NK,ni,nk),
+		 DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj))
+{
+  int i, j, k;
+  #pragma scop
+  {
+    /* C := alpha*A*B + beta*C */
+    #pragma omp target data map(to: A[:ni][:nk], B[:nk][:nj]) \
+      map(tofrom: C[:ni][:nj])
+    #pragma omp target teams distribute parallel for private (k) collapse(2)
+    for (i = 0; i < _PB_NI; i++)
+      for (j = 0; j < _PB_NJ; j++)
+	{
+	  C[i][j] *= beta;
+	  for (k = 0; k < _PB_NK; ++k)
+	    C[i][j] += alpha * A[i][k] * B[k][j];
+	}
+  }
+  #pragma endscop
+}
+#endif
 
 
 int main(int argc, char** argv)

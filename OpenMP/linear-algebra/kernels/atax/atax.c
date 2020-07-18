@@ -89,6 +89,34 @@ void kernel_atax(int nx, int ny,
   }
   #pragma endscop
 }
+#elif defined POLYBENCH_OFFLOAD1D
+static
+void kernel_atax(int nx, int ny,
+		 DATA_TYPE POLYBENCH_2D_1D(A,NX,NY,nx,ny),
+		 DATA_TYPE POLYBENCH_1D(x,NY,ny),
+		 DATA_TYPE POLYBENCH_1D(y,NY,ny),
+		 DATA_TYPE POLYBENCH_1D(tmp,NX,nx))
+{
+  int i, j;
+#define A_IDX(i,j) IDX2(A,i,j,nx,ny)
+  {
+    #pragma omp for
+    for (i = 0; i < _PB_NY; i++)
+      y[i] = 0;
+    #pragma omp target data map(to:A[:NX*NY], x[:NY], tmp[:NX]) map(tofrom: y[:NY])
+    #pragma omp target teams distribute parallel for private (j)
+    for (i = 0; i < _PB_NX; i++) {
+	    tmp[i] = 0;
+        for (j = 0; j < _PB_NY; j++)
+          tmp[i] = tmp[i] + GET_IDX2(A,i,j) * x[j];
+        for (j = 0; j < _PB_NY; j++) {
+            DATA_TYPE temp = GET_IDX2(A,i,j) * tmp[i];
+            #pragma omp atomic
+            y[j] += temp;
+        }
+    }
+  }
+}
 #else
 static
 void kernel_atax(int nx, int ny,

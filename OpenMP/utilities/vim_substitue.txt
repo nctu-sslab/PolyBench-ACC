@@ -1,0 +1,15 @@
+
+# replace  A[i][j]
+s/\(\w\+\)\[\([^\]]\+\)\]\[\([^\]]\+\)\]/GET_IDX2(\1,\2,\3)/g
+# replace  A[i][j][k]
+s/\(\w\+\)\[\([^\]]\+\)\]\[\([^\]]\+\)\]\[\([^\]]\+\)\]/GET_IDX3(\1,\2,\3,\4)/g
+
+# replace decl
+s/^.*DATA_TYPE POLYBENCH_2D.*(\([^,]\+\),.*,\([^,]\+\),\([^,)]\+\)).*$/#define \1_IDX(i,j) IDX2(\1,i,j,\2,\3)/g
+s/^.*DATA_TYPE POLYBENCH_3D.*(\([^,]\+\),.*,\([^,]\+\),\([^,)]\+\),\([^,)]\+\)).*$/#define \1_IDX(i,j,k) IDX3(\1,i,j,k,\2,\3,\4)/g
+
+
+
+
+s/^.*DATA_TYPE POLYBENCH_2D.*(\(\w\+\),.*,\(\w\+\),\(\w\+\)).*$/#define \1_IDX(i,j) IDX2(\1,i,j,\2,\3)/g
+s/^.*DATA_TYPE POLYBENCH_3D.*(\(\w\+\),.*,\(\w\+\),\(\w\+\),\(\w\+\)).*$/#define \1_IDX(i,j,k) IDX3(\1,i,j,k,\2,\3,\4)/g
