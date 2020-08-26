@@ -150,8 +150,12 @@ static void kernel_2mm(int ni, int nj, int nk, int nl,
 		DATA_TYPE POLYBENCH_2D(D,NI,NL,ni,nl))
 {
   int i, j, k;
+#if defined OMP_DCAT
+  #pragma omp target data map(to:tmp, A, B, C) map(tofrom: D)
+#else
   #pragma omp target data map(to:tmp[:NI][:NJ], A[:NI][:NK], B[:NK][:NJ], \
           C[:NL][:NJ]) map(tofrom: D[:NI][:NL])
+#endif
   {
     #pragma omp target teams distribute parallel for private (j, k)
     for (i = 0; i < _PB_NI; i++)
@@ -183,11 +187,22 @@ int main(int argc, char** argv)
   /* Variable declaration/allocation. */
   DATA_TYPE alpha;
   DATA_TYPE beta;
+
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(tmp,DATA_TYPE,NI,NJ,ni,nj);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NI,NK,ni,nk);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,NK,NJ,nk,nj);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(C,DATA_TYPE,NL,NJ,nl,nj);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(D,DATA_TYPE,NI,NL,ni,nl);
+  DC_END();
 
   /* Initialize array(s). */
   init_array (ni, nj, nk, nl, &alpha, &beta,

@@ -138,8 +138,13 @@ void kernel_bicg(int nx, int ny,
 {
   int i, j;
   #pragma scop
+#ifdef OMP_DCAT
+  #pragma omp target data map(to: A, p[:ny], r[:nx]) \
+    map(tofrom: s[:ny], q[:nx])
+#else
   #pragma omp target data map(to: A[:nx][:ny], p[:ny], r[:nx]) \
     map(tofrom: s[:ny], q[:nx])
+#endif
   {
     #pragma omp target teams distribute parallel for private(i)
     for (j = 0; j < _PB_NY; j++) {
@@ -168,7 +173,9 @@ int main(int argc, char** argv)
   int ny = NY;
 
   /* Variable declaration/allocation. */
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, NX, NY, nx, ny);
+  DC_END();
   POLYBENCH_1D_ARRAY_DECL(s, DATA_TYPE, NY, ny);
   POLYBENCH_1D_ARRAY_DECL(q, DATA_TYPE, NX, nx);
   POLYBENCH_1D_ARRAY_DECL(p, DATA_TYPE, NY, ny);

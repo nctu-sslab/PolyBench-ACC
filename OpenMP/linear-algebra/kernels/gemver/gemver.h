@@ -33,7 +33,7 @@
 #  endif
 
 #  ifdef EXTRALARGE_DATASET
-#   define N 100000
+#   define N 20000
 #  endif
 # endif /* !N */
 

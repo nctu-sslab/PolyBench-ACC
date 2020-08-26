@@ -16,6 +16,7 @@
 #include <sys/resource.h>
 #include <sched.h>
 #include <math.h>
+#include "polybench.h"
 #ifdef _OPENMP
 # include <omp.h>
 #endif
@@ -29,7 +30,6 @@
 #ifndef POLYBENCH_CACHE_SIZE_KB
 # define POLYBENCH_CACHE_SIZE_KB 32770
 #endif
-
 
 int polybench_papi_counters_threadid = POLYBENCH_THREAD_MONITOR;
 double polybench_program_total_flops = 0;
@@ -376,14 +376,16 @@ void polybench_timer_print()
 }
 
 
-
-static
-void *
-xmalloc (size_t num)
+static void * xmalloc (size_t num)
 {
-  void* new = NULL;
-  int ret = posix_memalign (&new, 32, num);
-  if (! new || ret)
+  void* ptr = NULL;
+#if 0
+  int ret = posix_memalign (&ptr, 32, num);
+#else
+  ptr = malloc(num);
+  int ret = 0;
+#endif
+  if (! ptr || ret)
     {
       if (ret & ENOMEM) {
           fprintf (stderr, "[PolyBench] posix_memalign: out of memory\n");
@@ -392,8 +394,9 @@ xmalloc (size_t num)
       }
       exit (1);
     }
-  return new;
+  return ptr;
 }
+
 
 
 void* polybench_alloc_data(unsigned long long int n, int elt_size)
@@ -408,15 +411,15 @@ void* polybench_alloc_data(unsigned long long int n, int elt_size)
 void* polybench_alloc_2d_data(unsigned long long int n1, unsigned long long int n2,
         int elt_size){
   static int flag = 0;
-  if (flag == 0) {
-    puts("polybench_alloc_2d_data");
-    flag++;
-  }
   size_t val = n1 * n2 * elt_size;
   // Add array of pointer size
   val += n1 * sizeof(void*);
 
   void *ret = xmalloc(val);
+  if (flag == 0) {
+    puts("polybench_alloc_2d_data");
+    flag++;
+  }
   char *data_begin = (char*)ret + n1 * sizeof(void*);
   char **ptrs = (char**) ret;
   //printf("begin: %p\n", (void*)data_begin);

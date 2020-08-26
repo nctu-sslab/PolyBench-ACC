@@ -41,9 +41,9 @@
 #  endif
 
 #  ifdef EXTRALARGE_DATASET
-#   define NQ 1000
-#   define NR 1000
-#   define NP 1000
+#   define NQ 512
+#   define NR 512
+#   define NP 512
 #  endif
 # endif /* !N */
 

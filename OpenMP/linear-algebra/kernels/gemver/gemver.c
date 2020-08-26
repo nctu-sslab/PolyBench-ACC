@@ -166,8 +166,13 @@ void kernel_gemver(int n,
 {
   int i, j;
   #pragma scop
+#ifdef OMP_DCAT
+  #pragma omp target data map(to: A, u1[:n], v1[:n], u2[:n], \
+          v2[:n], x[:n], y[:n], z[:n]) map(tofrom: w[:n])
+#else
   #pragma omp target data map(to: A[:n][:n], u1[:n], v1[:n], u2[:n], \
           v2[:n], x[:n], y[:n], z[:n]) map(tofrom: w[:n])
+#endif
   {
     #pragma omp target teams distribute parallel for
     for (i = 0; i < _PB_N; i++)
@@ -198,7 +203,9 @@ int main(int argc, char** argv)
   /* Variable declaration/allocation. */
   DATA_TYPE alpha;
   DATA_TYPE beta;
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, N, N, n, n);
+  DC_END();
   POLYBENCH_1D_ARRAY_DECL(u1, DATA_TYPE, N, n);
   POLYBENCH_1D_ARRAY_DECL(v1, DATA_TYPE, N, n);
   POLYBENCH_1D_ARRAY_DECL(u2, DATA_TYPE, N, n);
@@ -207,7 +214,6 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(x, DATA_TYPE, N, n);
   POLYBENCH_1D_ARRAY_DECL(y, DATA_TYPE, N, n);
   POLYBENCH_1D_ARRAY_DECL(z, DATA_TYPE, N, n);
-
 
   /* Initialize array(s). */
   init_array (n, &alpha, &beta,

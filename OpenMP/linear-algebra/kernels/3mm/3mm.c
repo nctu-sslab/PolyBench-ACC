@@ -172,8 +172,12 @@ void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
 		DATA_TYPE POLYBENCH_2D(G,NI,NL,ni,nl))
 {
   int i, j, k;
+#ifdef OMP_DCAT
+#pragma omp target data map(to: A, B, C, D, E, F) map(tofrom: G)
+#else
 #pragma omp target data map(to: A[:NI][:NK], B[:NK][:NJ], C[:NJ][:NM], \
         D[:NM][:NL], E[:NI][:NJ], F[:NJ][:NL]) map(tofrom: G[:NI][:NL])
+#endif
   {
     /* E := A*B */
     #pragma omp target teams distribute parallel for private (j, k)
@@ -216,13 +220,27 @@ int main(int argc, char** argv)
   int nm = NM;
 
   /* Variable declaration/allocation. */
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(E, DATA_TYPE, NI, NJ, ni, nj);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, NI, NK, ni, nk);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(B, DATA_TYPE, NK, NJ, nk, nj);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(F, DATA_TYPE, NJ, NL, nj, nl);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(C, DATA_TYPE, NJ, NM, nj, nm);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(D, DATA_TYPE, NM, NL, nm, nl);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(G, DATA_TYPE, NI, NL, ni, nl);
+  DC_END();
 
   /* Initialize array(s). */
   init_array (ni, nj, nk, nl, nm,

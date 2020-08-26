@@ -130,7 +130,11 @@ void kernel_atax(int nx, int ny,
     #pragma omp for
     for (i = 0; i < _PB_NY; i++)
       y[i] = 0;
+#ifdef OMP_DCAT
+    #pragma omp target data map(to:A, x[:NY], tmp[:NX]) map(tofrom: y[:NY])
+#else
     #pragma omp target data map(to:A[:NX][:NY], x[:NY], tmp[:NX]) map(tofrom: y[:NY])
+#endif
     #pragma omp target teams distribute parallel for private (j)
     for (i = 0; i < _PB_NX; i++) {
 	    tmp[i] = 0;
@@ -154,7 +158,9 @@ int main(int argc, char** argv)
   int ny = NY;
 
   /* Variable declaration/allocation. */
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, NX, NY, nx, ny);
+  DC_END();
   POLYBENCH_1D_ARRAY_DECL(x, DATA_TYPE, NY, ny);
   POLYBENCH_1D_ARRAY_DECL(y, DATA_TYPE, NY, ny);
   POLYBENCH_1D_ARRAY_DECL(tmp, DATA_TYPE, NX, nx);

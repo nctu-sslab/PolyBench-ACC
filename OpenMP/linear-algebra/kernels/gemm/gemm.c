@@ -131,8 +131,12 @@ void kernel_gemm(int ni, int nj, int nk,
   #pragma scop
   {
     /* C := alpha*A*B + beta*C */
+#ifdef OMP_DCAT
+    #pragma omp target data map(to: A, B) map(tofrom: C)
+#else
     #pragma omp target data map(to: A[:ni][:nk], B[:nk][:nj]) \
       map(tofrom: C[:ni][:nj])
+#endif
     #pragma omp target teams distribute parallel for private (k) collapse(2)
     for (i = 0; i < _PB_NI; i++)
       for (j = 0; j < _PB_NJ; j++)
@@ -157,9 +161,15 @@ int main(int argc, char** argv)
   /* Variable declaration/allocation. */
   DATA_TYPE alpha;
   DATA_TYPE beta;
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(C,DATA_TYPE,NI,NJ,ni,nj);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NI,NK,ni,nk);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,NK,NJ,nk,nj);
+  DC_END();
 
   /* Initialize array(s). */
   init_array (ni, nj, nk, &alpha, &beta,

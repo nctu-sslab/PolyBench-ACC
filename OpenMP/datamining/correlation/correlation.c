@@ -208,7 +208,13 @@ void kernel_correlation(int m, int n,
 
 #define sqrt_of_array_cell(x,j) sqrt(x[j])
   /* Determine mean of column vectors of input data matrix */
-  #pragma omp target data map(to: data[:M][:N], mean[:M], stddev[:M]) map(tofrom: symmat[:M][:M])
+#ifdef OMP_DCAT
+  #pragma omp target data map(to: data, mean[:M], stddev[:M]) \
+    map(tofrom: symmat)
+#else
+  #pragma omp target data map(to: data[:M][:N], mean[:M], stddev[:M]) \
+    map(tofrom: symmat[:M][:M])
+#endif
   {
     #pragma omp target teams distribute parallel for private (i)
     for (j = 0; j < _PB_M; j++)
@@ -268,10 +274,15 @@ int main(int argc, char** argv)
 
   /* Variable declaration/allocation. */
   DATA_TYPE float_n;
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(data,DATA_TYPE,M,N,m,n);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(symmat,DATA_TYPE,M,M,m,m);
+  DC_END();
   POLYBENCH_1D_ARRAY_DECL(mean,DATA_TYPE,M,m);
   POLYBENCH_1D_ARRAY_DECL(stddev,DATA_TYPE,M,m);
+
 
   /* Initialize array(s). */
   init_array (m, n, &float_n, POLYBENCH_ARRAY(data));

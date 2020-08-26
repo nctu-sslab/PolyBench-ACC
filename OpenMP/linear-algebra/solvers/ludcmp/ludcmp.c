@@ -4,7 +4,7 @@
  *
  * Contact:
  * William Killian <killian@udel.edu>
- * 
+ *
  * Copyright 2013, The University of Delaware
  */
 #include <stdio.h>
@@ -70,12 +70,12 @@ void kernel_ludcmp(int n,
   int i, j, k;
 
   DATA_TYPE w;
-  
+
   #pragma scop
   b[0] = 1.0;
-  #pragma omp parallel
+  //#pragma omp parallel
   {
-    #pragma omp for private (j, k, w)
+    #pragma omp parallel for private (j, k, w)
     for (i = 0; i < _PB_N; i++)
     {
       for (j = i+1; j <= _PB_N; j++)
@@ -85,7 +85,10 @@ void kernel_ludcmp(int n,
           w = w- A[j][k] * A[k][i];
 	      A[j][i] = w / A[i][i];
       }
-      #pragma omp barrier
+    }
+    #pragma omp parallel for private (j, k, w)
+    for (i = 0; i < _PB_N; i++)
+    {
       for (j = i+1; j <= _PB_N; j++)
 	    {
 	      w = A[i+1][j];
@@ -95,7 +98,7 @@ void kernel_ludcmp(int n,
 	    }
     }
     y[0] = b[0];
-    #pragma omp for private (j, w)
+    #pragma omp parallel for private (j, w)
     for (i = 1; i <= _PB_N; i++)
     {
       w = b[i];
@@ -104,7 +107,7 @@ void kernel_ludcmp(int n,
       y[i] = w;
     }
     x[_PB_N] = y[_PB_N] / A[_PB_N][_PB_N];
-    #pragma omp for private (j, w)
+    #pragma omp parallel for private (j, w)
     for (i = 0; i <= _PB_N - 1; i++)
     {
       w = y[_PB_N - 1 - (i)];

@@ -24,6 +24,16 @@
 # define POLYBENCH_H
 
 # include <stdlib.h>
+void __tgt_target_data_declare_end();
+void __tgt_target_data_declare_begin();
+
+#if defined OMP_DCAT
+#define DC_BEGIN() {__tgt_target_data_declare_begin();}
+#define DC_END() {__tgt_target_data_declare_end();}
+#else
+#define DC_BEGIN()
+#define DC_END()
+#endif
 
 /* Array padding. By default, none is used. */
 # ifndef POLYBENCH_PADDING_FACTOR
@@ -117,6 +127,12 @@
 /* unused */
 #  define POLYBENCH_ALLOC_5D_ARRAY
 /* unused */
+
+#  define POLYBENCH_ALLOC_2D_ARRAY_SIZE(n1, n2, type) \
+  (n1 * n2 * sizeof(type) + n1 * sizeof(void*))
+#  define POLYBENCH_ALLOC_3D_ARRAY_SIZE(n1, n2, n3, type) \
+  (n1 * n2 * n3 * sizeof(type) + sizeof(void*) * (n1 * n2 + n1))
+
 # else
 # define POLYBENCH_ALLOC_1D_ARRAY(n1, type)	\
   (type(*)[n1 + POLYBENCH_PADDING_FACTOR])polybench_alloc_data (n1 + POLYBENCH_PADDING_FACTOR, sizeof(type))

@@ -56,7 +56,7 @@ void print_array(int ni, int nj,
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
 #ifndef OMP_OFFLOAD
-static
+//static
 void kernel_conv2d(int ni,
 		   int nj,
 		   DATA_TYPE POLYBENCH_2D(A,NI,NJ,ni,nj),
@@ -77,7 +77,7 @@ void kernel_conv2d(int ni,
   #pragma endscop
 }
 #elif defined POLYBENCH_OFFLOAD1D
-static
+//static
 void kernel_conv2d(int ni,
 		   int nj,
 		   DATA_TYPE POLYBENCH_2D_1D(A,NI,NJ,ni,nj),
@@ -101,7 +101,7 @@ void kernel_conv2d(int ni,
   #pragma endscop
 }
 #else
-static
+//static
 void kernel_conv2d(int ni,
 		   int nj,
 		   DATA_TYPE POLYBENCH_2D(A,NI,NJ,ni,nj),
@@ -109,7 +109,11 @@ void kernel_conv2d(int ni,
 {
   int i, j;
   #pragma scop
+#ifdef OMP_DCAT
+  #pragma omp target data map(to: A) map(tofrom: B)
+#else
   #pragma omp target data map(to: A[:ni][:nj]) map(tofrom: B[:ni][:nj])
+#endif
   #pragma omp target teams distribute parallel for private(j) schedule(static)
   for (i = 1; i < _PB_NI - 1; ++i)
   {
@@ -132,8 +136,13 @@ int main(int argc, char** argv)
   int nj = NJ;
 
   /* Variable declaration/allocation. */
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, NI, NJ, ni, nj);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(B, DATA_TYPE, NI, NJ, ni, nj);
+  DC_END();
+
 
   /* Initialize array(s). */
   init_array (ni, nj, POLYBENCH_ARRAY(A));

@@ -15,16 +15,36 @@ OFFLOAD=1
 endif
 
 ifdef OFFLOAD
+$(warning "Offloading Enabled")
 OMPOFFLOADFLAGS := -DOMP_OFFLOAD -fopenmp-targets=nvptx64
 ifdef POLY1D
 OMPOFFLOADFLAGS += -DPOLYBENCH_OFFLOAD1D -Wno-incompatible-pointer-types
 else
 OMPOFFLOADFLAGS += -DPOLYBENCH_DYNAMIC_ARRAYS
 endif
+ifdef OMP_MASK
+$(warning "MASK Enabled")
+OMPOFFLOADFLAGS += -DOMP_MASK -DOMP_DCAT
+OMPOFFLOADFLAGS += -L $(LLVM_BUILD_PATH)/lib
+OMPOFFLOADFLAGS += -lomptarget
+endif
+ifdef OMP_OFFSET
+$(warning "OFFSET Enabled")
+OMPOFFLOADFLAGS += -DOMP_OFFSET -DOMP_DCAT
+OMPOFFLOADFLAGS += -L $(LLVM_BUILD_PATH)/lib
+OMPOFFLOADFLAGS += -lomptarget
+endif
+ifdef OMP_UVM
+$(warning "UVM Enabled")
+OMPOFFLOADFLAGS += -DOMP_DCAT
+OMPOFFLOADFLAGS += -L $(LLVM_BUILD_PATH)/lib
+OMPOFFLOADFLAGS += -lomptarget
+endif
 CFLAGS      += $(OMPOFFLOADFLAGS)
 CXXFLAGS    += $(OMPOFFLOADFLAGS)
 LDLIBS      += $(OMPOFFLOADFLAGS)
 endif
+
 
 ifdef VERIFY
 RUN_MINI=1

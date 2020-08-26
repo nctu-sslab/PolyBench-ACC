@@ -156,8 +156,12 @@ void kernel_covariance(int m, int n,
 
   #pragma scop
   /* Determine mean of column vectors of input data matrix */
+#ifdef OMP_DCAT
+  #pragma omp target data map(tofrom: symmat) map(to: mean[:m], data)
+#else
   #pragma omp target data map(tofrom: symmat[:m][:m]) \
     map(to: mean[:m], data[:m][:n])
+#endif
   {
     #pragma omp target teams distribute parallel for private (i)
     for (j = 0; j < _PB_M; j++)
@@ -197,8 +201,12 @@ int main(int argc, char** argv)
 
   /* Variable declaration/allocation. */
   DATA_TYPE float_n;
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(data,DATA_TYPE,M,N,m,n);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(symmat,DATA_TYPE,M,M,m,m);
+  DC_END();
   POLYBENCH_1D_ARRAY_DECL(mean,DATA_TYPE,M,m);
 
   /* Initialize array(s). */

@@ -57,6 +57,7 @@ void print_array(int ni, int nj, int nk,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#ifndef OMP_OFFLOAD
 static
 void kernel_conv2d(int ni,
 		   int nj,
@@ -87,6 +88,38 @@ void kernel_conv2d(int ni,
   }
   #pragma endscop
 }
+#else
+static
+void kernel_conv2d(int ni,
+		   int nj,
+		   int nk,
+		   DATA_TYPE POLYBENCH_3D(A,NI,NJ,NK,ni,nj,nk),
+		   DATA_TYPE POLYBENCH_3D(B,NI,NJ,NK,ni,nj,nk))
+{
+  int i, j, k;
+  #pragma scop
+  #pragma omp target data map(to: A[:ni][:nj][:nk]) map(tofrom: B[:ni][:nj][:nk])
+  {
+    #pragma omp target teams distribute parallel for private(j,k)
+    for (i = 1; i < _PB_NI - 1; ++i)
+      for (j = 1; j < _PB_NJ - 1; ++j)
+	for (k = 1; k < _PB_NK - 1; ++k)
+	  {
+             B[i][j][k]
+	       =  2 * A[i-1][j-1][k-1]  +  4 * A[i+1][j-1][k-1]
+	       +  5 * A[i-1][j-1][k-1]  +  7 * A[i+1][j-1][k-1]
+	       + -8 * A[i-1][j-1][k-1]  + 10 * A[i+1][j-1][k-1]
+	       + -3 * A[ i ][j-1][ k ]
+	       +  6 * A[ i ][ j ][ k ]
+	       + -9 * A[ i ][j+1][ k ]
+	       +  2 * A[i-1][j-1][k+1]  +  4 * A[i+1][j-1][k+1]
+	       +  5 * A[i-1][ j ][k+1]  +  7 * A[i+1][ j ][k+1]
+	       + -8 * A[i-1][j+1][k+1]  + 10 * A[i+1][j+1][k+1];
+           }
+  }
+  #pragma endscop
+}
+#endif
 
 
 int main(int argc, char** argv)

@@ -122,8 +122,12 @@ void kernel_doitgen(int nr, int nq, int np,
 		    DATA_TYPE POLYBENCH_3D(sum,NR,NQ,NP,nr,nq,np))
 {
   int r, q, p, s;
+#ifdef OMP_DCAT
+  #pragma omp target data map(to: C4, sum) map(tofrom: A)
+#else
   #pragma omp target data map(to: C4[:np][:np], sum[:nr][:nq][:np]) \
     map(tofrom: A[:nr][:nq][:np])
+#endif
   {
     #pragma omp target teams distribute parallel for private (q, p, s)
     for (r = 0; r < _PB_NR; r++)
@@ -150,9 +154,16 @@ int main(int argc, char** argv)
   int np = NP;
 
   /* Variable declaration/allocation. */
+  DC_BEGIN();
   POLYBENCH_3D_ARRAY_DECL(A,DATA_TYPE,NR,NQ,NP,nr,nq,np);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_3D_ARRAY_DECL(sum,DATA_TYPE,NR,NQ,NP,nr,nq,np);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(C4,DATA_TYPE,NP,NP,np,np);
+  DC_END();
+
 
   /* Initialize array(s). */
   init_array (nr, nq, np,

@@ -188,10 +188,15 @@ void kernel_reg_detect(int niter, int maxgrid, int length,
   int t, i, j, cnt;
 
   {
+#ifdef OMP_DCAT
+#pragma omp target data map(to:sum_tang, mean, diff, sum_diff) \
+        map(tofrom: path)
+#else
 #pragma omp target data map(to:sum_tang[:maxgrid][:maxgrid], \
         mean[:maxgrid][:maxgrid], diff[:maxgrid][:maxgrid][:length], \
         sum_diff[:maxgrid][:maxgrid][:length]) \
         map(tofrom: path[:maxgrid][:maxgrid])
+#endif
       for (t = 0; t < _PB_NITER; t++)
       {
         #pragma omp target teams distribute parallel for collapse(2)
@@ -244,11 +249,22 @@ int main(int argc, char** argv)
   int length = LENGTH;
 
   /* Variable declaration/allocation. */
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(sum_tang, DATA_TYPE, MAXGRID, MAXGRID, maxgrid, maxgrid);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(mean, DATA_TYPE, MAXGRID, MAXGRID, maxgrid, maxgrid);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(path, DATA_TYPE, MAXGRID, MAXGRID, maxgrid, maxgrid);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_3D_ARRAY_DECL(diff, DATA_TYPE, MAXGRID, MAXGRID, LENGTH, maxgrid, maxgrid, length);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_3D_ARRAY_DECL(sum_diff, DATA_TYPE, MAXGRID, MAXGRID, LENGTH, maxgrid, maxgrid, length);
+  DC_END();
+
 
   /* Initialize array(s). */
   init_array (maxgrid,

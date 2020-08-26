@@ -21,6 +21,12 @@
 #   define NJ 32
 #   define NK 32
 #   define NL 32
+/*
+#   define NI 2
+#   define NJ 2
+#   define NK 2
+#   define NL 2
+*/
 #  endif
 
 #  ifdef SMALL_DATASET

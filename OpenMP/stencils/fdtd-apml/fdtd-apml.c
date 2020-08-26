@@ -269,10 +269,17 @@ void kernel_fdtd_apml(int cz,
 {
   int iz, iy, ix;
 
+#ifdef OMP_DCAT
+    #pragma omp target data map(to: Ax, Ry, clf, tmp, czm[:CZ+1], czp[:CZ+1], \
+            cxmh[:CXM+1], cxph[:CXM+1], cymh[:CYM+1], cyph[:CYM+1]) \
+            map(tofrom: Bza, Ex,Ey, Hz)
+#else
     #pragma omp target data map(to: Ax[:CZ+1][:CYM+1], Ry[:CZ+1][:CYM+1], \
             clf[:CYM+1][:CXM+1], tmp[:CYM+1][:CXM+1], czm[:CZ+1], czp[:CZ+1], \
             cxmh[:CXM+1], cxph[:CXM+1], cymh[:CYM+1], cyph[:CYM+1]) \
-            map(tofrom: Bza[:CZ+1][:CYM+1][:CXM+1], Ex[:CZ+1][:CYM+1][:CXM+1], Ey[:CZ+1][:CYM+1][:CXM+1], Hz[:CZ+1][:CYM+1][:CXM+1])
+            map(tofrom: Bza[:CZ+1][:CYM+1][:CXM+1], Ex[:CZ+1][:CYM+1][:CXM+1],\
+            Ey[:CZ+1][:CYM+1][:CXM+1], Hz[:CZ+1][:CYM+1][:CXM+1])
+#endif
     {
       #pragma omp target teams distribute parallel for private(iy, ix)
       for (iz = 0; iz < _PB_CZ; iz++)
@@ -326,14 +333,30 @@ int main(int argc, char** argv)
   /* Variable declaration/allocation. */
   DATA_TYPE mui;
   DATA_TYPE ch;
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(Ax,DATA_TYPE,CZ+1,CYM+1,cz+1,cym+1);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(Ry,DATA_TYPE,CZ+1,CYM+1,cz+1,cym+1);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(clf,DATA_TYPE,CYM+1,CXM+1,cym+1,cxm+1);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_2D_ARRAY_DECL(tmp,DATA_TYPE,CYM+1,CXM+1,cym+1,cxm+1);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_3D_ARRAY_DECL(Bza,DATA_TYPE,CZ+1,CYM+1,CXM+1,cz+1,cym+1,cxm+1);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_3D_ARRAY_DECL(Ex,DATA_TYPE,CZ+1,CYM+1,CXM+1,cz+1,cym+1,cxm+1);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_3D_ARRAY_DECL(Ey,DATA_TYPE,CZ+1,CYM+1,CXM+1,cz+1,cym+1,cxm+1);
+  DC_END();
+  DC_BEGIN();
   POLYBENCH_3D_ARRAY_DECL(Hz,DATA_TYPE,CZ+1,CYM+1,CXM+1,cz+1,cym+1,cxm+1);
+  DC_END();
   POLYBENCH_1D_ARRAY_DECL(czm,DATA_TYPE,CZ+1,cz+1);
   POLYBENCH_1D_ARRAY_DECL(czp,DATA_TYPE,CZ+1,cz+1);
   POLYBENCH_1D_ARRAY_DECL(cxmh,DATA_TYPE,CXM+1,cxm+1);
